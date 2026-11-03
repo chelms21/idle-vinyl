@@ -22,7 +22,7 @@
 <body class="bg-vinyl-900 text-gray-100 font-sans min-h-screen flex flex-col">
 
   <!-- Top Header Navigation / Dashboard -->
-  <header class="bg-vinyl-800 border-b border-gray-800 p-4 sticky top-0 z-10 shadow-md">
+  <header class="bg-vinyl-800 border-b border-gray-800 p-4 sticky top-0 z-20 shadow-md">
     <div class="max-w-4xl mx-auto flex justify-between items-center">
       <div>
         <h1 class="text-xl font-bold tracking-tight text-amber-500">💿 Vinyl Empire</h1>
@@ -54,6 +54,21 @@
       </button>
     </div>
 
+    <!-- Staff / Worker Management Card -->
+    <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <h3 class="font-bold text-gray-100">👷 Plant Staff</h3>
+          <span id="techs-count" class="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs rounded font-mono">0 Hired</span>
+        </div>
+        <p class="text-xs text-gray-400">Each technician grants a <span class="text-blue-400 font-mono">+25% speed boost</span> to all stations.</p>
+      </div>
+      <button id="hire-tech-btn" onclick="hireTechnician()" 
+        class="px-4 py-2 text-xs font-bold rounded transition bg-blue-600 hover:bg-blue-500 text-white cursor-pointer">
+        Hire Tech ($150)
+      </button>
+    </div>
+
     <!-- Stations List -->
     <div id="stations-container" class="space-y-3">
       <!-- Built once on load -->
@@ -71,6 +86,8 @@
     const defaultState = {
       cash: 10,
       stage: 'Garage DIY Press',
+      techsHired: 0,
+      techBaseCost: 150,
       lastSaved: Date.now(),
       stations: [
         { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 10, baseRevenue: 2, cycleTime: 1200, unlockCost: 0, unlocked: true, progress: 0 },
@@ -83,7 +100,7 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V2';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V3';
 
     function getUpgradeCost(station) {
       return Math.floor(station.baseCost * Math.pow(1.15, station.level));
@@ -93,9 +110,15 @@
       return Math.floor(station.baseRevenue * station.level);
     }
 
-    // Higher level = faster progress speed multiplier
+    function getTechCost() {
+      return Math.floor(gameState.techBaseCost * Math.pow(1.35, gameState.techsHired));
+    }
+
+    // Speed multiplier scales with both station level AND total hired technicians
     function getStationSpeedMultiplier(station) {
-      return Math.pow(1.08, station.level - 1);
+      const levelBonus = Math.pow(1.08, station.level - 1);
+      const techBonus = 1 + (gameState.techsHired * 0.25);
+      return levelBonus * techBonus;
     }
 
     // Build DOM elements ONCE
@@ -153,6 +176,18 @@
       document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
       document.getElementById('stage-title').innerText = gameState.stage;
 
+      // Update Staff UI
+      document.getElementById('techs-count').innerText = `${gameState.techsHired} Hired`;
+      const techBtn = document.getElementById('hire-tech-btn');
+      const techCost = getTechCost();
+      techBtn.innerText = `Hire Tech ($${techCost.toLocaleString()})`;
+      if (gameState.cash >= techCost) {
+        techBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-blue-600 hover:bg-blue-500 text-white cursor-pointer";
+      } else {
+        techBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
+      }
+
+      // Update Stations UI
       gameState.stations.forEach(station => {
         const btn = document.getElementById(`action-btn-${station.id}`);
         if (!btn) return;
@@ -163,13 +198,11 @@
             ? "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer" 
             : "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
         } else {
-          // Update level & revenue text elements
           const lvlEl = document.getElementById(`level-${station.id}`);
           const revEl = document.getElementById(`revenue-${station.id}`);
           if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
           if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}`;
 
-          // Update Progress Bar width
           const barEl = document.getElementById(`bar-${station.id}`);
           if (barEl) barEl.style.width = `${station.progress}%`;
 
@@ -208,6 +241,16 @@
       }
     }
 
+    function hireTechnician() {
+      const cost = getTechCost();
+      if (gameState.cash >= cost) {
+        gameState.cash -= cost;
+        gameState.techsHired += 1;
+        updateUI();
+        saveGame();
+      }
+    }
+
     function saveGame() {
       gameState.lastSaved = Date.now();
       localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -220,7 +263,6 @@
           const loadedState = JSON.parse(saved);
           gameState = { ...defaultState, ...loadedState };
 
-          // Approximate offline earnings based on average production rate
           const elapsedSeconds = Math.max(0, (Date.now() - (gameState.lastSaved || Date.now())) / 1000);
           if (elapsedSeconds > 0) {
             let totalPerSec = 0;
@@ -279,27 +321,23 @@
       }
     }
 
-    // Main Game Loop (Runs 20 times per second for ultra-smooth progress bars)
+    // Main Game Loop (Runs 20 times per second)
     let lastTick = Date.now();
     setInterval(() => {
       const now = Date.now();
       const deltaMs = now - lastTick;
       lastTick = now;
-      const deltaSeconds = deltaMs / 1000;
 
-      // Update progress for each unlocked station
       gameState.stations.forEach(station => {
         if (!station.unlocked) return;
 
-        // Calculate progress increment based on cycle time and level speed multiplier
         const speedMult = getStationSpeedMultiplier(station);
         const progressIncrement = (deltaMs / station.cycleTime) * 100 * speedMult;
         
         station.progress += progressIncrement;
 
-        // When cycle completes
         if (station.progress >= 100) {
-          station.progress = 0; // Reset progress bar loop
+          station.progress = 0;
           gameState.cash += getStationRevenue(station);
         }
       });
