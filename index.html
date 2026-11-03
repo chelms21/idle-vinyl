@@ -177,12 +177,10 @@
 
   <!-- Core Game Logic -->
   <script>
-    // Audio Engine state
     let audioCtx = null;
     let soundEnabled = true;
     let audioUnlocked = false;
 
-    // Resumes AudioContext safely after user gesture
     function unlockAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -196,7 +194,6 @@
       }
     }
 
-    // Attach unlock listener to initial user interaction
     window.addEventListener('click', unlockAudio, { once: true });
     window.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -255,9 +252,7 @@
             noteOsc.stop(now + idx * 0.08 + 0.1);
           });
         }
-      } catch (e) {
-        // Suppress audio errors silently so game loop never halts
-      }
+      } catch (e) {}
     }
 
     const STAGE_NAMES = [
@@ -313,7 +308,7 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V12';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V13';
 
     function switchTab(tabId) {
       playSound('click');
