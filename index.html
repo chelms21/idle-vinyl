@@ -174,6 +174,16 @@
       { id: 'distro', name: '🏷️ Major Label Distro', maxLevel: 5, baseCost: 6, costMult: 2.5, desc: '+25% base revenue yield per level' }
     ];
 
+    // Vinyl Color Variants Tiers
+    const COLOR_VARIANTS = [
+      { minLevel: 1, name: 'Standard Black Wax', colorClass: 'bg-amber-500', textColor: 'text-gray-400', mult: 1.0 },
+      { minLevel: 10, name: 'Translucent Ruby Red', colorClass: 'bg-red-500', textColor: 'text-red-400', mult: 1.5 },
+      { minLevel: 25, name: 'Neon Acid Splatter', colorClass: 'bg-emerald-400', textColor: 'text-emerald-400', mult: 2.5 },
+      { minLevel: 50, name: 'Cosmic Galaxy Marble', colorClass: 'bg-purple-500', textColor: 'text-purple-400', mult: 4.0 },
+      { minLevel: 75, name: 'Liquid Silver Foil', colorClass: 'bg-sky-300', textColor: 'text-sky-300', mult: 7.0 },
+      { minLevel: 100, name: '18k Solid Gold Master', colorClass: 'bg-yellow-400', textColor: 'text-yellow-400', mult: 12.0 }
+    ];
+
     const defaultState = {
       cash: 10,
       lifetimeCash: 10,
@@ -195,27 +205,38 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V7';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V8';
 
-    // Tech Tree Perks Calculations
+    function getActiveVariant(level) {
+      let current = COLOR_VARIANTS[0];
+      for (let i = 0; i < COLOR_VARIANTS.length; i++) {
+        if (level >= COLOR_VARIANTS[i].minLevel) {
+          current = COLOR_VARIANTS[i];
+        } else {
+          break;
+        }
+      }
+      return current;
+    }
+
     function getTechCostDiscount() {
       const level = gameState.techTree.bulk_pvc || 0;
-      return 1 - (level * 0.05); // -5% cost per level
+      return 1 - (level * 0.05);
     }
 
     function getTechSpeedBonus() {
       const level = gameState.techTree.conveyors || 0;
-      return 1 + (level * 0.10); // +10% speed per level
+      return 1 + (level * 0.10);
     }
 
     function getTechOfflineEfficiency() {
       const level = gameState.techTree.overtime || 0;
-      return 0.50 + (level * 0.15); // Base 50% + 15% per level
+      return 0.50 + (level * 0.15);
     }
 
     function getTechRevenueBonus() {
       const level = gameState.techTree.distro || 0;
-      return 1 + (level * 0.25); // +25% revenue per level
+      return 1 + (level * 0.25);
     }
 
     function getUpgradeCost(station) {
@@ -257,10 +278,11 @@
     function getStationRevenue(station) {
       const baseYield = station.baseRevenue * station.level;
       const milestoneMult = getMilestoneMultiplier(station.level);
+      const variantMult = getActiveVariant(station.level).mult;
       const tapeMult = 1 + (gameState.masterTapes * 0.10);
       const gearMult = getGearRevenueMultiplier();
       const techMult = getTechRevenueBonus();
-      return Math.floor(baseYield * milestoneMult * tapeMult * gearMult * techMult);
+      return Math.floor(baseYield * milestoneMult * variantMult * tapeMult * gearMult * techMult);
     }
 
     function getTechCost() {
@@ -316,7 +338,6 @@
 
     // Build DOM elements ONCE
     function initUI() {
-      // Tech Tree UI Build
       const techContainer = document.getElementById('tech-tree-container');
       techContainer.innerHTML = '';
 
@@ -347,7 +368,6 @@
         techContainer.appendChild(card);
       });
 
-      // Stations UI Build
       const container = document.getElementById('stations-container');
       container.innerHTML = '';
 
@@ -370,6 +390,7 @@
             </div>
           `;
         } else {
+          const variant = getActiveVariant(station.level);
           card.className = "p-4 rounded-lg border bg-vinyl-800 border-gray-800 transition space-y-3";
           card.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
@@ -377,7 +398,7 @@
                 <div class="flex items-center gap-2">
                   <h3 class="font-bold text-gray-100">${station.name}</h3>
                   <span id="level-${station.id}" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs rounded font-mono">Lvl ${station.level}</span>
-                  <span id="milestone-${station.id}" class="text-xs font-mono text-purple-400 font-bold hidden"></span>
+                  <span id="variant-${station.id}" class="text-xs font-mono font-bold ${variant.textColor}">${variant.name}</span>
                 </div>
                 <p class="text-xs text-gray-400">Yield: <span id="revenue-${station.id}" class="text-green-400 font-mono">+$${getStationRevenue(station).toLocaleString()}</span></p>
               </div>
@@ -388,7 +409,7 @@
             </div>
             <!-- Progress Bar -->
             <div class="w-full bg-vinyl-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
-              <div id="bar-${station.id}" class="bg-amber-500 h-full transition-all duration-75" style="width: 0%"></div>
+              <div id="bar-${station.id}" class="${variant.colorClass} h-full transition-all duration-75" style="width: 0%"></div>
             </div>
           `;
         }
@@ -403,7 +424,6 @@
       document.getElementById('tapes-display').innerText = '📼 ' + gameState.masterTapes.toLocaleString();
       document.getElementById('stage-title').innerText = STAGE_NAMES[Math.min(gameState.stageIndex, STAGE_NAMES.length - 1)];
 
-      // Tech Tree Button States
       TECH_TREE.forEach(tech => {
         const btn = document.getElementById(`tech-btn-${tech.id}`);
         if (!btn) return;
@@ -421,7 +441,6 @@
         }
       });
 
-      // Gear UI Updates
       const crateBtn = document.getElementById('open-crate-btn');
       if (gameState.masterTapes >= 5) {
         crateBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer";
@@ -450,7 +469,6 @@
         }
       });
 
-      // Prestige UI
       const pendingTapes = getPendingMasterTapes();
       document.getElementById('prestige-gain').innerText = `+${pendingTapes.toLocaleString()} Tapes`;
       const prestigeBtn = document.getElementById('prestige-btn');
@@ -462,7 +480,6 @@
         prestigeBtn.innerText = "Move Location";
       }
 
-      // Staff UI
       document.getElementById('techs-count').innerText = `${gameState.techsHired} Hired`;
       const techBtn = document.getElementById('hire-tech-btn');
       const techCost = getTechCost();
@@ -473,7 +490,6 @@
         techBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
       }
 
-      // Stations UI
       gameState.stations.forEach(station => {
         const btn = document.getElementById(`action-btn-${station.id}`);
         if (!btn) return;
@@ -486,23 +502,22 @@
         } else {
           const lvlEl = document.getElementById(`level-${station.id}`);
           const revEl = document.getElementById(`revenue-${station.id}`);
-          const milestoneEl = document.getElementById(`milestone-${station.id}`);
+          const variantEl = document.getElementById(`variant-${station.id}`);
+          const barEl = document.getElementById(`bar-${station.id}`);
 
           if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
           if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}`;
 
-          const mult = getMilestoneMultiplier(station.level);
-          if (milestoneEl) {
-            if (mult > 1) {
-              milestoneEl.innerText = `${mult}x BOOST`;
-              milestoneEl.classList.remove('hidden');
-            } else {
-              milestoneEl.classList.add('hidden');
-            }
+          // Update color variant name and progress bar color class dynamically
+          const variant = getActiveVariant(station.level);
+          if (variantEl) {
+            variantEl.innerText = variant.name;
+            variantEl.className = `text-xs font-mono font-bold ${variant.textColor}`;
           }
-
-          const barEl = document.getElementById(`bar-${station.id}`);
-          if (barEl) barEl.style.width = `${station.progress}%`;
+          if (barEl) {
+            // Clear old color classes and apply active variant color
+            barEl.className = `${variant.colorClass} h-full transition-all duration-75`;
+          }
 
           const cost = getUpgradeCost(station);
           const canAfford = gameState.cash >= cost;
@@ -582,8 +597,6 @@
         try {
           const loadedState = JSON.parse(saved);
           gameState = { ...defaultState, ...loadedState };
-
-          // Combine tech tree fields if missing from older saves
           gameState.techTree = { ...defaultState.techTree, ...(loadedState.techTree || {}) };
 
           const elapsedSeconds = Math.max(0, (Date.now() - (gameState.lastSaved || Date.now())) / 1000);
