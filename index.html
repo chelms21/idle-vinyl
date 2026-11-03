@@ -56,7 +56,7 @@
 
     <!-- Stations List -->
     <div id="stations-container" class="space-y-3">
-      <!-- Dynamic stations rendered by JS -->
+      <!-- Built once on load -->
     </div>
 
   </main>
@@ -68,7 +68,6 @@
 
   <!-- Core Game Logic -->
   <script>
-    // Initial Game State Configuration
     const defaultState = {
       cash: 10,
       stage: 'Garage DIY Press',
@@ -86,7 +85,6 @@
     let gameState = JSON.parse(JSON.stringify(defaultState));
     const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V1';
 
-    // Math Formulas
     function getUpgradeCost(station) {
       return Math.floor(station.baseCost * Math.pow(1.15, station.level));
     }
@@ -99,20 +97,33 @@
       return gameState.stations.reduce((sum, s) => s.unlocked ? sum + getStationRevenue(s) : sum, 0);
     }
 
-    // UI Rendering
-    function render() {
-      document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
-      document.getElementById('stage-title').innerText = gameState.stage;
-
+    // Build the DOM elements ONCE
+    function initUI() {
       const container = document.getElementById('stations-container');
       container.innerHTML = '';
 
       gameState.stations.forEach(station => {
         const card = document.createElement('div');
+        card.id = `station-card-${station.id}`;
         card.className = `p-4 rounded-lg border transition ${
-          station.unlocked 
-            ? 'bg-vinyl-800 border-gray-800' 
-            : 'bg-vinyl-900 border-gray-800/50 opacity-60'
+          station.unlocked ? 'bg-vinyl-800 border-gray-800' : 'bg-vinyl-900 border-gray-800/50 opacity-60'
+        }`;
+        container.appendChild(card);
+      });
+      updateUI();
+    }
+
+    // Update numbers & styles dynamically without destroying elements
+    function updateUI() {
+      document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
+      document.getElementById('stage-title').innerText = gameState.stage;
+
+      gameState.stations.forEach(station => {
+        const card = document.getElementById(`station-card-${station.id}`);
+        if (!card) return;
+
+        card.className = `p-4 rounded-lg border transition ${
+          station.unlocked ? 'bg-vinyl-800 border-gray-800' : 'bg-vinyl-900 border-gray-800/50 opacity-60'
         }`;
 
         if (!station.unlocked) {
@@ -124,7 +135,7 @@
                 <p class="text-xs text-gray-500">Locked Station</p>
               </div>
               <button onclick="unlockStation('${station.id}')" 
-                class="px-4 py-2 text-xs font-bold rounded ${
+                class="px-4 py-2 text-xs font-bold rounded transition ${
                   canUnlock 
                     ? 'bg-amber-500 hover:bg-amber-400 text-black cursor-pointer' 
                     : 'bg-gray-800 text-gray-500 cursor-not-allowed'
@@ -158,19 +169,16 @@
             </div>
           `;
         }
-
-        container.appendChild(card);
       });
     }
 
-    // Actions
     function upgradeStation(id) {
       const station = gameState.stations.find(s => s.id === id);
       const cost = getUpgradeCost(station);
       if (station && station.unlocked && gameState.cash >= cost) {
         gameState.cash -= cost;
         station.level += 1;
-        render();
+        updateUI();
         saveGame();
       }
     }
@@ -181,12 +189,11 @@
         gameState.cash -= station.unlockCost;
         station.unlocked = true;
         station.level = 1;
-        render();
+        initUI(); // Re-initialize to swap layout from locked to unlocked card
         saveGame();
       }
     }
 
-    // Save & Load Engine
     function saveGame() {
       gameState.lastSaved = Date.now();
       localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -199,12 +206,10 @@
           const loadedState = JSON.parse(saved);
           gameState = { ...defaultState, ...loadedState };
 
-          // Offline progress calculation
           const elapsedSeconds = Math.max(0, (Date.now() - (gameState.lastSaved || Date.now())) / 1000);
           const offlineEarnings = getPerSecondIncome() * elapsedSeconds;
           if (offlineEarnings > 0) {
             gameState.cash += offlineEarnings;
-            console.log(`Earned $${Math.floor(offlineEarnings)} while away for ${Math.floor(elapsedSeconds)}s`);
           }
         } catch (e) {
           console.error("Failed to load save:", e);
@@ -234,7 +239,7 @@
           if (data && data.stations && typeof data.cash === 'number') {
             gameState = data;
             saveGame();
-            render();
+            initUI();
             alert('Save file imported successfully!');
           } else {
             alert('Invalid save file format.');
@@ -250,11 +255,11 @@
       if (confirm('Are you sure you want to reset all progress?')) {
         localStorage.removeItem(SAVE_KEY);
         gameState = JSON.parse(JSON.stringify(defaultState));
-        render();
+        initUI();
       }
     }
 
-    // Main Game Loop (Runs 10 times per second)
+    // Main Game Loop
     let lastTick = Date.now();
     setInterval(() => {
       const now = Date.now();
@@ -262,15 +267,14 @@
       lastTick = now;
 
       gameState.cash += getPerSecondIncome() * deltaSeconds;
-      render();
+      updateUI();
     }, 100);
 
-    // Auto-save every 5 seconds
     setInterval(saveGame, 5000);
 
     // Initialization
     loadGame();
-    render();
+    initUI();
   </script>
 </body>
 </html>
