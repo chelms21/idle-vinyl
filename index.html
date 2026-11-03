@@ -179,23 +179,15 @@
   <script>
     let audioCtx = null;
     let soundEnabled = true;
-    let audioUnlocked = false;
 
-    function unlockAudio() {
+    function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(() => {
-          audioUnlocked = true;
-        });
-      } else {
-        audioUnlocked = true;
+        audioCtx.resume();
       }
     }
-
-    window.addEventListener('click', unlockAudio, { once: true });
-    window.addEventListener('keydown', unlockAudio, { once: true });
 
     function toggleSound() {
       soundEnabled = !soundEnabled;
@@ -204,7 +196,9 @@
     }
 
     function playSound(type) {
-      if (!soundEnabled || !audioUnlocked || !audioCtx) return;
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx || audioCtx.state !== 'running') return;
 
       try {
         const now = audioCtx.currentTime;
@@ -308,7 +302,7 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V13';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V14';
 
     function switchTab(tabId) {
       playSound('click');
@@ -640,6 +634,7 @@
           }
           if (barEl) {
             barEl.className = `${variant.colorClass} h-full transition-all duration-75`;
+            barEl.style.width = `${Math.min(100, Math.max(0, station.progress))}%`;
           }
 
           const cost = getUpgradeCost(station);
