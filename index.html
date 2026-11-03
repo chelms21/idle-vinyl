@@ -41,15 +41,15 @@
     <!-- Action Bar & Save Management -->
     <div class="bg-vinyl-800 p-3 rounded-lg border border-gray-800 flex flex-wrap justify-between items-center gap-2">
       <div class="flex gap-2">
-        <button onclick="exportSave()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-xs font-semibold rounded transition">
+        <button onclick="exportSave()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-xs font-semibold rounded transition cursor-pointer">
           💾 Export Save
         </button>
-        <button onclick="document.getElementById('import-input').click()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-xs font-semibold rounded transition">
+        <button onclick="document.getElementById('import-input').click()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-xs font-semibold rounded transition cursor-pointer">
           📂 Import Save
         </button>
         <input type="file" id="import-input" accept=".json" class="hidden" onchange="importSave(event)" />
       </div>
-      <button onclick="resetGame()" class="px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-red-300 text-xs font-semibold rounded transition">
+      <button onclick="resetGame()" class="px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-red-300 text-xs font-semibold rounded transition cursor-pointer">
         ⚠️ Reset
       </button>
     </div>
@@ -97,7 +97,7 @@
       return gameState.stations.reduce((sum, s) => s.unlocked ? sum + getStationRevenue(s) : sum, 0);
     }
 
-    // Build the DOM elements ONCE
+    // Build DOM elements ONCE (or when unlock state changes)
     function initUI() {
       const container = document.getElementById('stations-container');
       container.innerHTML = '';
@@ -105,92 +105,100 @@
       gameState.stations.forEach(station => {
         const card = document.createElement('div');
         card.id = `station-card-${station.id}`;
-        card.className = `p-4 rounded-lg border transition ${
-          station.unlocked ? 'bg-vinyl-800 border-gray-800' : 'bg-vinyl-900 border-gray-800/50 opacity-60'
-        }`;
-        container.appendChild(card);
-      });
-      updateUI();
-    }
-
-    // Update numbers & styles dynamically without destroying elements
-    function updateUI() {
-      document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
-      document.getElementById('stage-title').innerText = gameState.stage;
-
-      gameState.stations.forEach(station => {
-        const card = document.getElementById(`station-card-${station.id}`);
-        if (!card) return;
-
-        card.className = `p-4 rounded-lg border transition ${
-          station.unlocked ? 'bg-vinyl-800 border-gray-800' : 'bg-vinyl-900 border-gray-800/50 opacity-60'
-        }`;
 
         if (!station.unlocked) {
-          const canUnlock = gameState.cash >= station.unlockCost;
+          card.className = "p-4 rounded-lg border bg-vinyl-900 border-gray-800/50 opacity-60 transition";
           card.innerHTML = `
             <div class="flex justify-between items-center">
               <div>
                 <h3 class="font-bold text-gray-400">${station.name}</h3>
                 <p class="text-xs text-gray-500">Locked Station</p>
               </div>
-              <button onclick="unlockStation('${station.id}')" 
-                class="px-4 py-2 text-xs font-bold rounded transition ${
-                  canUnlock 
-                    ? 'bg-amber-500 hover:bg-amber-400 text-black cursor-pointer' 
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                }">
+              <button id="action-btn-${station.id}" onclick="handleStationAction('${station.id}')" 
+                class="px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed">
                 Unlock ($${station.unlockCost.toLocaleString()})
               </button>
             </div>
           `;
         } else {
-          const cost = getUpgradeCost(station);
-          const revenue = getStationRevenue(station);
-          const canAfford = gameState.cash >= cost;
-
+          card.className = "p-4 rounded-lg border bg-vinyl-800 border-gray-800 transition";
           card.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
               <div class="space-y-1">
                 <div class="flex items-center gap-2">
                   <h3 class="font-bold text-gray-100">${station.name}</h3>
-                  <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs rounded font-mono">Lvl ${station.level}</span>
+                  <span id="level-${station.id}" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs rounded font-mono">Lvl ${station.level}</span>
                 </div>
-                <p class="text-xs text-gray-400">Yield: <span class="text-green-400 font-mono">+$${revenue.toLocaleString()}/sec</span></p>
+                <p class="text-xs text-gray-400">Yield: <span id="revenue-${station.id}" class="text-green-400 font-mono">+$${getStationRevenue(station).toLocaleString()}/sec</span></p>
               </div>
-              <button onclick="upgradeStation('${station.id}')" 
-                class="px-4 py-2 text-xs font-bold rounded transition ${
-                  canAfford 
-                    ? 'bg-amber-500 hover:bg-amber-400 text-black cursor-pointer' 
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                }">
-                Upgrade ($${cost.toLocaleString()})
+              <button id="action-btn-${station.id}" onclick="handleStationAction('${station.id}')" 
+                class="px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer">
+                Upgrade
               </button>
             </div>
           `;
         }
+        container.appendChild(card);
+      });
+      updateUI();
+    }
+
+    // Update text and button states in place without touching innerHTML
+    function updateUI() {
+      document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
+      document.getElementById('stage-title').innerText = gameState.stage;
+
+      gameState.stations.forEach(station => {
+        const btn = document.getElementById(`action-btn-${station.id}`);
+        if (!btn) return;
+
+        if (!station.unlocked) {
+          const canUnlock = gameState.cash >= station.unlockCost;
+          if (canUnlock) {
+            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer";
+          } else {
+            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
+          }
+        } else {
+          // Update level & revenue text elements in place
+          const lvlEl = document.getElementById(`level-${station.id}`);
+          const revEl = document.getElementById(`revenue-${station.id}`);
+          if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
+          if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}/sec`;
+
+          const cost = getUpgradeCost(station);
+          const canAfford = gameState.cash >= cost;
+          btn.innerText = `Upgrade ($${cost.toLocaleString()})`;
+          
+          if (canAfford) {
+            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer";
+          } else {
+            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
+          }
+        }
       });
     }
 
-    function upgradeStation(id) {
+    function handleStationAction(id) {
       const station = gameState.stations.find(s => s.id === id);
-      const cost = getUpgradeCost(station);
-      if (station && station.unlocked && gameState.cash >= cost) {
-        gameState.cash -= cost;
-        station.level += 1;
-        updateUI();
-        saveGame();
-      }
-    }
+      if (!station) return;
 
-    function unlockStation(id) {
-      const station = gameState.stations.find(s => s.id === id);
-      if (station && !station.unlocked && gameState.cash >= station.unlockCost) {
-        gameState.cash -= station.unlockCost;
-        station.unlocked = true;
-        station.level = 1;
-        initUI(); // Re-initialize to swap layout from locked to unlocked card
-        saveGame();
+      if (!station.unlocked) {
+        if (gameState.cash >= station.unlockCost) {
+          gameState.cash -= station.unlockCost;
+          station.unlocked = true;
+          station.level = 1;
+          initUI(); // Re-build DOM element once for this station
+          saveGame();
+        }
+      } else {
+        const cost = getUpgradeCost(station);
+        if (gameState.cash >= cost) {
+          gameState.cash -= cost;
+          station.level += 1;
+          updateUI();
+          saveGame();
+        }
       }
     }
 
@@ -259,7 +267,7 @@
       }
     }
 
-    // Main Game Loop
+    // Main Game Loop (Runs 10 times per second)
     let lastTick = Date.now();
     setInterval(() => {
       const now = Date.now();
