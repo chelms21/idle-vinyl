@@ -61,11 +61,11 @@
           <h3 class="font-bold text-gray-100">👷 Plant Staff</h3>
           <span id="techs-count" class="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs rounded font-mono">0 Hired</span>
         </div>
-        <p class="text-xs text-gray-400">Each technician grants a <span class="text-blue-400 font-mono">+25% speed boost</span> to all stations.</p>
+        <p class="text-xs text-gray-400">Each technician grants a <span class="text-blue-400 font-mono">+15% speed boost</span> to all stations.</p>
       </div>
       <button id="hire-tech-btn" onclick="hireTechnician()" 
         class="px-4 py-2 text-xs font-bold rounded transition bg-blue-600 hover:bg-blue-500 text-white cursor-pointer">
-        Hire Tech ($150)
+        Hire Tech ($250)
       </button>
     </div>
 
@@ -87,37 +87,40 @@
       cash: 10,
       stage: 'Garage DIY Press',
       techsHired: 0,
-      techBaseCost: 150,
+      techBaseCost: 250,
       lastSaved: Date.now(),
       stations: [
-        { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 10, baseRevenue: 2, cycleTime: 1200, unlockCost: 0, unlocked: true, progress: 0 },
-        { id: 'plating', name: '2. Matrix Plating', level: 0, baseCost: 50, baseRevenue: 10, cycleTime: 2000, unlockCost: 50, unlocked: false, progress: 0 },
-        { id: 'granulator', name: '3. Vinyl Granulator', level: 0, baseCost: 250, baseRevenue: 45, cycleTime: 3500, unlockCost: 250, unlocked: false, progress: 0 },
-        { id: 'press', name: '4. Hydraulic Press', level: 0, baseCost: 1200, baseRevenue: 200, cycleTime: 5000, unlockCost: 1200, unlocked: false, progress: 0 },
-        { id: 'trimmer', name: '5. Edge Trimmer', level: 0, baseCost: 6000, baseRevenue: 950, cycleTime: 7000, unlockCost: 6000, unlocked: false, progress: 0 },
-        { id: 'sleeve', name: '6. Foil Sleeve Press', level: 0, baseCost: 35000, baseRevenue: 4500, cycleTime: 10000, unlockCost: 35000, unlocked: false, progress: 0 }
+        { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 15, baseRevenue: 2, cycleTime: 1200, unlockCost: 0, unlocked: true, progress: 0 },
+        { id: 'plating', name: '2. Matrix Plating', level: 0, baseCost: 120, baseRevenue: 12, cycleTime: 2500, unlockCost: 120, unlocked: false, progress: 0 },
+        { id: 'granulator', name: '3. Vinyl Granulator', level: 0, baseCost: 1000, baseRevenue: 85, cycleTime: 4000, unlockCost: 1000, unlocked: false, progress: 0 },
+        { id: 'press', name: '4. Hydraulic Press', level: 0, baseCost: 8500, baseRevenue: 600, cycleTime: 6500, unlockCost: 8500, unlocked: false, progress: 0 },
+        { id: 'trimmer', name: '5. Edge Trimmer', level: 0, baseCost: 65000, baseRevenue: 4200, cycleTime: 9000, unlockCost: 65000, unlocked: false, progress: 0 },
+        { id: 'sleeve', name: '6. Foil Sleeve Press', level: 0, baseCost: 500000, baseRevenue: 30000, cycleTime: 13000, unlockCost: 500000, unlocked: false, progress: 0 }
       ]
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V3';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V4';
 
+    // Balanced station upgrade cost curve (1.20x exponential growth)
     function getUpgradeCost(station) {
-      return Math.floor(station.baseCost * Math.pow(1.15, station.level));
+      return Math.floor(station.baseCost * Math.pow(1.20, station.level - 1));
     }
 
+    // Balanced station revenue scaling (linear base payout per level)
     function getStationRevenue(station) {
       return Math.floor(station.baseRevenue * station.level);
     }
 
+    // Exponential cost curve for staff (1.80x per hire)
     function getTechCost() {
-      return Math.floor(gameState.techBaseCost * Math.pow(1.35, gameState.techsHired));
+      return Math.floor(gameState.techBaseCost * Math.pow(1.80, gameState.techsHired));
     }
 
-    // Speed multiplier scales with both station level AND total hired technicians
+    // Moderate speed scaling per level and per technician
     function getStationSpeedMultiplier(station) {
-      const levelBonus = Math.pow(1.08, station.level - 1);
-      const techBonus = 1 + (gameState.techsHired * 0.25);
+      const levelBonus = Math.pow(1.03, station.level - 1); // +3% speed per level
+      const techBonus = 1 + (gameState.techsHired * 0.15);  // +15% speed per tech
       return levelBonus * techBonus;
     }
 
@@ -171,12 +174,12 @@
       updateUI();
     }
 
-    // Update text, progress bars, and button states in place
+    // Update UI elements in place
     function updateUI() {
       document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
       document.getElementById('stage-title').innerText = gameState.stage;
 
-      // Update Staff UI
+      // Staff UI
       document.getElementById('techs-count').innerText = `${gameState.techsHired} Hired`;
       const techBtn = document.getElementById('hire-tech-btn');
       const techCost = getTechCost();
@@ -187,7 +190,7 @@
         techBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
       }
 
-      // Update Stations UI
+      // Stations UI
       gameState.stations.forEach(station => {
         const btn = document.getElementById(`action-btn-${station.id}`);
         if (!btn) return;
