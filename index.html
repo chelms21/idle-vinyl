@@ -28,9 +28,15 @@
         <h1 class="text-xl font-bold tracking-tight text-amber-500">💿 Vinyl Empire</h1>
         <p id="stage-title" class="text-xs text-gray-400">Garage DIY Press</p>
       </div>
-      <div class="text-right">
-        <div class="text-xs text-gray-400 uppercase tracking-wider">Cash Balance</div>
-        <div id="cash-display" class="text-2xl font-black text-green-400">$0</div>
+      <div class="flex items-center gap-4 text-right">
+        <div>
+          <div class="text-xs text-purple-400 uppercase tracking-wider">Master Tapes</div>
+          <div id="tapes-display" class="text-lg font-bold text-purple-400">📼 0</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-400 uppercase tracking-wider">Cash Balance</div>
+          <div id="cash-display" class="text-2xl font-black text-green-400">$0</div>
+        </div>
       </div>
     </div>
   </header>
@@ -51,6 +57,59 @@
       </div>
       <button onclick="resetGame()" class="px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-red-300 text-xs font-semibold rounded transition cursor-pointer">
         ⚠️ Reset
+      </button>
+    </div>
+
+    <!-- Manager Vault & Gear Equipment Card -->
+    <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-700/50 pb-3">
+        <div>
+          <h3 class="font-bold text-amber-400">🎧 Manager Equipment Vault</h3>
+          <p class="text-xs text-gray-400">Equip gear to gain permanent speed and revenue boosts across all stations.</p>
+        </div>
+        <button id="open-crate-btn" onclick="openGearCrate()" 
+          class="px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer">
+          Open Gear Crate (📼 5 Tapes)
+        </button>
+      </div>
+
+      <!-- Gear Slots Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Headwear Slot -->
+        <div id="slot-headwear" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Headwear Slot</div>
+          <div id="headwear-name" class="text-sm font-bold text-gray-300">Empty</div>
+          <div id="headwear-stat" class="text-xs text-gray-400">No Stats</div>
+        </div>
+
+        <!-- Torso Slot -->
+        <div id="slot-torso" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Torso Slot</div>
+          <div id="torso-name" class="text-sm font-bold text-gray-300">Empty</div>
+          <div id="torso-stat" class="text-xs text-gray-400">No Stats</div>
+        </div>
+
+        <!-- Tool Slot -->
+        <div id="slot-tool" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tool Slot</div>
+          <div id="tool-name" class="text-sm font-bold text-gray-300">Empty</div>
+          <div id="tool-stat" class="text-xs text-gray-400">No Stats</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prestige / Tour Bus Card -->
+    <div class="bg-gradient-to-r from-purple-900/40 to-vinyl-800 p-4 rounded-lg border border-purple-800/50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <h3 class="font-bold text-purple-300">🚌 Tour Bus Relocation</h3>
+          <span id="prestige-gain" class="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs rounded font-mono">+0 Tapes</span>
+        </div>
+        <p class="text-xs text-gray-400">Pack up shop to earn Master Tapes. Each tape grants a <span class="text-purple-400 font-mono">+10% permanent income boost</span>.</p>
+      </div>
+      <button id="prestige-btn" onclick="triggerPrestige()" 
+        class="px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed">
+        Move Location
       </button>
     </div>
 
@@ -83,11 +142,35 @@
 
   <!-- Core Game Logic -->
   <script>
+    const STAGE_NAMES = [
+      'Stage 1: Garage DIY Press',
+      'Stage 2: Downtown Indie Workshop',
+      'Stage 3: Regional Distro Factory',
+      'Stage 4: Global Vinyl Plant'
+    ];
+
+    // Gear Pool Database
+    const GEAR_DATABASE = [
+      { id: 'headphones_studio', slot: 'headwear', name: '🎧 Studio Headphones', statText: '+25% Global Speed', speedBonus: 0.25, revenueBonus: 0 },
+      { id: 'headphones_gold', slot: 'headwear', name: '👑 Audiophile Crown', statText: '+50% Global Revenue', speedBonus: 0, revenueBonus: 0.50 },
+      { id: 'apron_denim', slot: 'torso', name: '🎽 Shop Apron', statText: '+30% Global Revenue', speedBonus: 0, revenueBonus: 0.30 },
+      { id: 'apron_leather', slot: 'torso', name: '🧥 Master Leather Coat', statText: '+20% Speed & +20% Revenue', speedBonus: 0.20, revenueBonus: 0.20 },
+      { id: 'calipers_basic', slot: 'tool', name: '📏 Precision Calipers', statText: '+20% Global Speed', speedBonus: 0.20, revenueBonus: 0 },
+      { id: 'lathe_diamond', slot: 'tool', name: '💎 Diamond Stylus Tool', statText: '+75% Global Revenue', speedBonus: 0, revenueBonus: 0.75 }
+    ];
+
     const defaultState = {
       cash: 10,
-      stage: 'Garage DIY Press',
+      lifetimeCash: 10,
+      masterTapes: 0,
+      stageIndex: 0,
       techsHired: 0,
       techBaseCost: 250,
+      equippedGear: {
+        headwear: null,
+        torso: null,
+        tool: null
+      },
       lastSaved: Date.now(),
       stations: [
         { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 15, baseRevenue: 2, cycleTime: 1200, unlockCost: 0, unlocked: true, progress: 0 },
@@ -100,28 +183,82 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V4';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V6';
 
-    // Balanced station upgrade cost curve (1.20x exponential growth)
     function getUpgradeCost(station) {
       return Math.floor(station.baseCost * Math.pow(1.20, station.level - 1));
     }
 
-    // Balanced station revenue scaling (linear base payout per level)
-    function getStationRevenue(station) {
-      return Math.floor(station.baseRevenue * station.level);
+    function getMilestoneMultiplier(level) {
+      let mult = 1;
+      if (level >= 25) mult *= 2;
+      if (level >= 50) mult *= 2;
+      if (level >= 75) mult *= 2;
+      if (level >= 100) mult *= 2;
+      return mult;
     }
 
-    // Exponential cost curve for staff (1.80x per hire)
+    // Equipment Multipliers
+    function getGearRevenueMultiplier() {
+      let bonus = 0;
+      Object.values(gameState.equippedGear).forEach(gearId => {
+        if (gearId) {
+          const item = GEAR_DATABASE.find(g => g.id === gearId);
+          if (item) bonus += item.revenueBonus;
+        }
+      });
+      return 1 + bonus;
+    }
+
+    function getGearSpeedMultiplier() {
+      let bonus = 0;
+      Object.values(gameState.equippedGear).forEach(gearId => {
+        if (gearId) {
+          const item = GEAR_DATABASE.find(g => g.id === gearId);
+          if (item) bonus += item.speedBonus;
+        }
+      });
+      return 1 + bonus;
+    }
+
+    function getStationRevenue(station) {
+      const baseYield = station.baseRevenue * station.level;
+      const milestoneMult = getMilestoneMultiplier(station.level);
+      const tapeMult = 1 + (gameState.masterTapes * 0.10);
+      const gearMult = getGearRevenueMultiplier();
+      return Math.floor(baseYield * milestoneMult * tapeMult * gearMult);
+    }
+
     function getTechCost() {
       return Math.floor(gameState.techBaseCost * Math.pow(1.80, gameState.techsHired));
     }
 
-    // Moderate speed scaling per level and per technician
     function getStationSpeedMultiplier(station) {
-      const levelBonus = Math.pow(1.03, station.level - 1); // +3% speed per level
-      const techBonus = 1 + (gameState.techsHired * 0.15);  // +15% speed per tech
-      return levelBonus * techBonus;
+      const levelBonus = Math.pow(1.03, station.level - 1);
+      const techBonus = 1 + (gameState.techsHired * 0.15);
+      const gearSpeed = getGearSpeedMultiplier();
+      return levelBonus * techBonus * gearSpeed;
+    }
+
+    function getPendingMasterTapes() {
+      if (gameState.lifetimeCash < 100000) return 0;
+      return Math.floor(Math.sqrt(gameState.lifetimeCash / 100000));
+    }
+
+    // Open Gear Crate Function
+    function openGearCrate() {
+      const CRATE_COST = 5;
+      if (gameState.masterTapes < CRATE_COST) return;
+
+      gameState.masterTapes -= CRATE_COST;
+      
+      // Roll random item from pool
+      const randomItem = GEAR_DATABASE[Math.floor(Math.random() * GEAR_DATABASE.length)];
+      gameState.equippedGear[randomItem.slot] = randomItem.id;
+
+      alert(`🎁 Crate Opened!\n\nYou unlocked and equipped: ${randomItem.name}\n(${randomItem.statText})`);
+      saveGame();
+      updateUI();
     }
 
     // Build DOM elements ONCE
@@ -155,6 +292,7 @@
                 <div class="flex items-center gap-2">
                   <h3 class="font-bold text-gray-100">${station.name}</h3>
                   <span id="level-${station.id}" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs rounded font-mono">Lvl ${station.level}</span>
+                  <span id="milestone-${station.id}" class="text-xs font-mono text-purple-400 font-bold hidden"></span>
                 </div>
                 <p class="text-xs text-gray-400">Yield: <span id="revenue-${station.id}" class="text-green-400 font-mono">+$${getStationRevenue(station).toLocaleString()}</span></p>
               </div>
@@ -177,7 +315,49 @@
     // Update UI elements in place
     function updateUI() {
       document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
-      document.getElementById('stage-title').innerText = gameState.stage;
+      document.getElementById('tapes-display').innerText = '📼 ' + gameState.masterTapes.toLocaleString();
+      document.getElementById('stage-title').innerText = STAGE_NAMES[Math.min(gameState.stageIndex, STAGE_NAMES.length - 1)];
+
+      // Gear UI Updates
+      const crateBtn = document.getElementById('open-crate-btn');
+      if (gameState.masterTapes >= 5) {
+        crateBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer";
+      } else {
+        crateBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
+      }
+
+      ['headwear', 'torso', 'tool'].forEach(slot => {
+        const gearId = gameState.equippedGear[slot];
+        const nameEl = document.getElementById(`${slot}-name`);
+        const statEl = document.getElementById(`${slot}-stat`);
+
+        if (gearId) {
+          const item = GEAR_DATABASE.find(g => g.id === gearId);
+          if (item) {
+            nameEl.innerText = item.name;
+            nameEl.className = "text-sm font-bold text-amber-400";
+            statEl.innerText = item.statText;
+            statEl.className = "text-xs text-purple-300 font-mono";
+          }
+        } else {
+          nameEl.innerText = "Empty Slot";
+          nameEl.className = "text-sm font-bold text-gray-500";
+          statEl.innerText = "No Stats Active";
+          statEl.className = "text-xs text-gray-600";
+        }
+      });
+
+      // Prestige UI
+      const pendingTapes = getPendingMasterTapes();
+      document.getElementById('prestige-gain').innerText = `+${pendingTapes.toLocaleString()} Tapes`;
+      const prestigeBtn = document.getElementById('prestige-btn');
+      if (pendingTapes > 0) {
+        prestigeBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer";
+        prestigeBtn.innerText = `Relocate (+${pendingTapes} Tapes)`;
+      } else {
+        prestigeBtn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
+        prestigeBtn.innerText = "Move Location";
+      }
 
       // Staff UI
       document.getElementById('techs-count').innerText = `${gameState.techsHired} Hired`;
@@ -203,8 +383,20 @@
         } else {
           const lvlEl = document.getElementById(`level-${station.id}`);
           const revEl = document.getElementById(`revenue-${station.id}`);
+          const milestoneEl = document.getElementById(`milestone-${station.id}`);
+
           if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
           if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}`;
+
+          const mult = getMilestoneMultiplier(station.level);
+          if (milestoneEl) {
+            if (mult > 1) {
+              milestoneEl.innerText = `${mult}x BOOST`;
+              milestoneEl.classList.remove('hidden');
+            } else {
+              milestoneEl.classList.add('hidden');
+            }
+          }
 
           const barEl = document.getElementById(`bar-${station.id}`);
           if (barEl) barEl.style.width = `${station.progress}%`;
@@ -254,6 +446,28 @@
       }
     }
 
+    function triggerPrestige() {
+      const pendingTapes = getPendingMasterTapes();
+      if (pendingTapes <= 0) return;
+
+      if (confirm(`Relocate your plant? You will reset cash and station levels, but gain +${pendingTapes} Master Tapes (+${pendingTapes * 10}% income forever)!`)) {
+        gameState.masterTapes += pendingTapes;
+        gameState.stageIndex += 1;
+        gameState.cash = 10;
+        gameState.lifetimeCash = 10;
+        gameState.techsHired = 0;
+
+        defaultState.stations.forEach((defStation, idx) => {
+          gameState.stations[idx].level = defStation.level;
+          gameState.stations[idx].unlocked = defStation.unlocked;
+          gameState.stations[idx].progress = 0;
+        });
+
+        saveGame();
+        initUI();
+      }
+    }
+
     function saveGame() {
       gameState.lastSaved = Date.now();
       localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -274,7 +488,9 @@
                 totalPerSec += (getStationRevenue(s) / (s.cycleTime / 1000)) * getStationSpeedMultiplier(s);
               }
             });
-            gameState.cash += totalPerSec * elapsedSeconds;
+            const offlineEarn = totalPerSec * elapsedSeconds;
+            gameState.cash += offlineEarn;
+            gameState.lifetimeCash = (gameState.lifetimeCash || 0) + offlineEarn;
           }
         } catch (e) {
           console.error("Failed to load save:", e);
@@ -341,7 +557,9 @@
 
         if (station.progress >= 100) {
           station.progress = 0;
-          gameState.cash += getStationRevenue(station);
+          const payout = getStationRevenue(station);
+          gameState.cash += payout;
+          gameState.lifetimeCash = (gameState.lifetimeCash || 0) + payout;
         }
       });
 
