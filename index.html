@@ -177,18 +177,28 @@
 
   <!-- Core Game Logic -->
   <script>
-    // --- Web Audio API Sound Engine ---
+    // Audio Engine state
     let audioCtx = null;
     let soundEnabled = true;
+    let audioUnlocked = false;
 
-    function initAudio() {
+    // Resumes AudioContext safely after user gesture
+    function unlockAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        audioCtx.resume().then(() => {
+          audioUnlocked = true;
+        });
+      } else {
+        audioUnlocked = true;
       }
     }
+
+    // Attach unlock listener to initial user interaction
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
 
     function toggleSound() {
       soundEnabled = !soundEnabled;
@@ -197,54 +207,56 @@
     }
 
     function playSound(type) {
-      if (!soundEnabled) return;
-      initAudio();
-      if (!audioCtx) return;
+      if (!soundEnabled || !audioUnlocked || !audioCtx) return;
 
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-      if (type === 'click') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
-        osc.start(now);
-        osc.stop(now + 0.05);
-      } else if (type === 'upgrade') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.setValueAtTime(500, now + 0.06);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now);
-        osc.stop(now + 0.15);
-      } else if (type === 'payout') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
-        gain.gain.setValueAtTime(0.08, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-        osc.start(now);
-        osc.stop(now + 0.08);
-      } else if (type === 'fanfare') {
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-        notes.forEach((freq, idx) => {
-          const noteOsc = audioCtx.createOscillator();
-          const noteGain = audioCtx.createGain();
-          noteOsc.type = 'square';
-          noteOsc.frequency.setValueAtTime(freq, now + idx * 0.08);
-          noteGain.gain.setValueAtTime(0.15, now + idx * 0.08);
-          noteGain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.1);
-          noteOsc.connect(noteGain);
-          noteGain.connect(audioCtx.destination);
-          noteOsc.start(now + idx * 0.08);
-          noteOsc.stop(now + idx * 0.08 + 0.1);
-        });
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'upgrade') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.setValueAtTime(500, now + 0.06);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'payout') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(700, now);
+          osc.frequency.exponentialRampToValueAtTime(1100, now + 0.06);
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } else if (type === 'fanfare') {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const noteOsc = audioCtx.createOscillator();
+            const noteGain = audioCtx.createGain();
+            noteOsc.type = 'square';
+            noteOsc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            noteGain.gain.setValueAtTime(0.1, now + idx * 0.08);
+            noteGain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.1);
+            noteOsc.connect(noteGain);
+            noteGain.connect(audioCtx.destination);
+            noteOsc.start(now + idx * 0.08);
+            noteOsc.stop(now + idx * 0.08 + 0.1);
+          });
+        }
+      } catch (e) {
+        // Suppress audio errors silently so game loop never halts
       }
     }
 
@@ -301,7 +313,7 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V11';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V12';
 
     function switchTab(tabId) {
       playSound('click');
