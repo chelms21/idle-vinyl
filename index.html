@@ -22,7 +22,7 @@
 <body class="bg-vinyl-900 text-gray-100 font-sans min-h-screen flex flex-col">
 
   <!-- Top Header Navigation / Dashboard -->
-  <header class="bg-vinyl-800 border-b border-gray-800 p-4 sticky top-0 z-20 shadow-md">
+  <header class="bg-vinyl-800 border-b border-gray-800 p-4 sticky top-0 z-30 shadow-md">
     <div class="max-w-4xl mx-auto flex justify-between items-center">
       <div>
         <h1 class="text-xl font-bold tracking-tight text-amber-500">💿 Vinyl Empire</h1>
@@ -40,6 +40,24 @@
       </div>
     </div>
   </header>
+
+  <!-- Navigation Tabs Bar -->
+  <nav class="bg-vinyl-800/80 border-b border-gray-800 sticky top-[73px] z-20 backdrop-blur">
+    <div class="max-w-4xl mx-auto flex px-4 gap-2 overflow-x-auto">
+      <button onclick="switchTab('factory')" id="tab-btn-factory" class="px-4 py-3 text-xs font-bold border-b-2 border-amber-500 text-amber-400 transition cursor-pointer">
+        🏭 Factory Floor
+      </button>
+      <button onclick="switchTab('vault')" id="tab-btn-vault" class="px-4 py-3 text-xs font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition cursor-pointer">
+        🎧 Manager Vault
+      </button>
+      <button onclick="switchTab("tech")" id="tab-btn-tech" class="px-4 py-3 text-xs font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition cursor-pointer">
+        📐 Tech Tree
+      </button>
+      <button onclick="switchTab('relocation')" id="tab-btn-relocation" class="px-4 py-3 text-xs font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition cursor-pointer">
+        🚌 Relocation
+      </button>
+    </div>
+  </nav>
 
   <!-- Main Game Workspace -->
   <main class="max-w-4xl w-full mx-auto p-4 flex-grow space-y-4">
@@ -60,86 +78,93 @@
       </button>
     </div>
 
-    <!-- Manager Vault & Gear Equipment Card -->
-    <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 space-y-4">
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-700/50 pb-3">
-        <div>
-          <h3 class="font-bold text-amber-400">🎧 Manager Equipment Vault</h3>
-          <p class="text-xs text-gray-400">Equip gear to gain permanent speed and revenue boosts across all stations.</p>
+    <!-- TAB 1: FACTORY FLOOR -->
+    <div id="tab-factory" class="space-y-4">
+      <!-- Staff / Worker Management Card -->
+      <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-bold text-gray-100">👷 Plant Staff</h3>
+            <span id="techs-count" class="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs rounded font-mono">0 Hired</span>
+          </div>
+          <p class="text-xs text-gray-400">Each technician grants a <span class="text-blue-400 font-mono">+15% speed boost</span> to all stations.</p>
         </div>
-        <button id="open-crate-btn" onclick="openGearCrate()" 
-          class="px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer">
-          Open Gear Crate (📼 5 Tapes)
+        <button id="hire-tech-btn" onclick="hireTechnician()" 
+          class="px-4 py-2 text-xs font-bold rounded transition bg-blue-600 hover:bg-blue-500 text-white cursor-pointer">
+          Hire Tech ($250)
         </button>
       </div>
 
-      <!-- Gear Slots Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div id="slot-headwear" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
-          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Headwear Slot</div>
-          <div id="headwear-name" class="text-sm font-bold text-gray-300">Empty</div>
-          <div id="headwear-stat" class="text-xs text-gray-400">No Stats</div>
+      <!-- Stations List -->
+      <div id="stations-container" class="space-y-3">
+        <!-- Built once on load -->
+      </div>
+    </div>
+
+    <!-- TAB 2: MANAGER VAULT -->
+    <div id="tab-vault" class="space-y-4 hidden">
+      <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-700/50 pb-3">
+          <div>
+            <h3 class="font-bold text-amber-400">🎧 Manager Equipment Vault</h3>
+            <p class="text-xs text-gray-400">Equip gear to gain permanent speed and revenue boosts across all stations.</p>
+          </div>
+          <button id="open-crate-btn" onclick="openGearCrate()" 
+            class="px-4 py-2 text-xs font-bold rounded transition bg-purple-600 hover:bg-purple-500 text-white cursor-pointer">
+            Open Gear Crate (📼 5 Tapes)
+          </button>
         </div>
 
-        <div id="slot-torso" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
-          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Torso Slot</div>
-          <div id="torso-name" class="text-sm font-bold text-gray-300">Empty</div>
-          <div id="torso-stat" class="text-xs text-gray-400">No Stats</div>
-        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div id="slot-headwear" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Headwear Slot</div>
+            <div id="headwear-name" class="text-sm font-bold text-gray-300">Empty</div>
+            <div id="headwear-stat" class="text-xs text-gray-400">No Stats</div>
+          </div>
 
-        <div id="slot-tool" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
-          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tool Slot</div>
-          <div id="tool-name" class="text-sm font-bold text-gray-300">Empty</div>
-          <div id="tool-stat" class="text-xs text-gray-400">No Stats</div>
+          <div id="slot-torso" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Torso Slot</div>
+            <div id="torso-name" class="text-sm font-bold text-gray-300">Empty</div>
+            <div id="torso-stat" class="text-xs text-gray-400">No Stats</div>
+          </div>
+
+          <div id="slot-tool" class="p-3 bg-vinyl-900 rounded border border-gray-800 space-y-1">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tool Slot</div>
+            <div id="tool-name" class="text-sm font-bold text-gray-300">Empty</div>
+            <div id="tool-stat" class="text-xs text-gray-400">No Stats</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Permanent Plant Upgrades Tech Tree Card -->
-    <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 space-y-3">
-      <div class="border-b border-gray-700/50 pb-2">
-        <h3 class="font-bold text-cyan-400">📐 Blueprint Workshop Tech Tree</h3>
-        <p class="text-xs text-gray-400">Invest Master Tapes into permanent perks that persist across all future resets.</p>
-      </div>
-
-      <div id="tech-tree-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <!-- Rendered dynamically -->
-      </div>
-    </div>
-
-    <!-- Prestige / Tour Bus Card -->
-    <div class="bg-gradient-to-r from-purple-900/40 to-vinyl-800 p-4 rounded-lg border border-purple-800/50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <h3 class="font-bold text-purple-300">🚌 Tour Bus Relocation</h3>
-          <span id="prestige-gain" class="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs rounded font-mono">+0 Tapes</span>
+    <!-- TAB 3: TECH TREE -->
+    <div id="tab-tech" class="space-y-4 hidden">
+      <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 space-y-3">
+        <div class="border-b border-gray-700/50 pb-2">
+          <h3 class="font-bold text-cyan-400">📐 Blueprint Workshop Tech Tree</h3>
+          <p class="text-xs text-gray-400">Invest Master Tapes into permanent perks that persist across all future resets.</p>
         </div>
-        <p class="text-xs text-gray-400">Pack up shop to earn Master Tapes. Each tape grants a <span class="text-purple-400 font-mono">+10% permanent income boost</span>.</p>
-      </div>
-      <button id="prestige-btn" onclick="triggerPrestige()" 
-        class="px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed">
-        Move Location
-      </button>
-    </div>
-
-    <!-- Staff / Worker Management Card -->
-    <div class="bg-vinyl-800 p-4 rounded-lg border border-gray-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <h3 class="font-bold text-gray-100">👷 Plant Staff</h3>
-          <span id="techs-count" class="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs rounded font-mono">0 Hired</span>
+        <div id="tech-tree-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Rendered dynamically -->
         </div>
-        <p class="text-xs text-gray-400">Each technician grants a <span class="text-blue-400 font-mono">+15% speed boost</span> to all stations.</p>
       </div>
-      <button id="hire-tech-btn" onclick="hireTechnician()" 
-        class="px-4 py-2 text-xs font-bold rounded transition bg-blue-600 hover:bg-blue-500 text-white cursor-pointer">
-        Hire Tech ($250)
-      </button>
     </div>
 
-    <!-- Stations List -->
-    <div id="stations-container" class="space-y-3">
-      <!-- Built once on load -->
+    <!-- TAB 4: RELOCATION (PRESTIGE) -->
+    <div id="tab-relocation" class="space-y-4 hidden">
+      <div class="bg-gradient-to-r from-purple-900/40 to-vinyl-800 p-4 rounded-lg border border-purple-800/50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-bold text-purple-300">🚌 Tour Bus Relocation</h3>
+            <span id="prestige-gain" class="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs rounded font-mono">+0 Tapes</span>
+          </div>
+          <p class="text-xs text-gray-400">Pack up shop to earn Master Tapes. Each tape grants a <span class="text-purple-400 font-mono">+10% permanent income boost</span>.</p>
+        </div>
+        <button id="prestige-btn" onclick="triggerPrestige()" 
+          class="px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed">
+          Move Location
+        </button>
+      </div>
     </div>
 
   </main>
@@ -174,7 +199,6 @@
       { id: 'distro', name: '🏷️ Major Label Distro', maxLevel: 5, baseCost: 6, costMult: 2.5, desc: '+25% base revenue yield per level' }
     ];
 
-    // Vinyl Color Variants Tiers
     const COLOR_VARIANTS = [
       { minLevel: 1, name: 'Standard Black Wax', colorClass: 'bg-amber-500', textColor: 'text-gray-400', mult: 1.0 },
       { minLevel: 10, name: 'Translucent Ruby Red', colorClass: 'bg-red-500', textColor: 'text-red-400', mult: 1.5 },
@@ -205,7 +229,23 @@
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V8';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V9';
+    let currentTab = 'factory';
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      ['factory', 'vault', 'tech', 'relocation'].forEach(id => {
+        const tabEl = document.getElementById(`tab-${id}`);
+        const btnEl = document.getElementById(`tab-btn-${id}`);
+        if (id === tabId) {
+          tabEl.classList.remove('hidden');
+          btnEl.className = "px-4 py-3 text-xs font-bold border-b-2 border-amber-500 text-amber-400 transition cursor-pointer";
+        } else {
+          tabEl.classList.add('hidden');
+          btnEl.className = "px-4 py-3 text-xs font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition cursor-pointer";
+        }
+      });
+    }
 
     function getActiveVariant(level) {
       let current = COLOR_VARIANTS[0];
@@ -508,14 +548,12 @@
           if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
           if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}`;
 
-          // Update color variant name and progress bar color class dynamically
           const variant = getActiveVariant(station.level);
           if (variantEl) {
             variantEl.innerText = variant.name;
             variantEl.className = `text-xs font-mono font-bold ${variant.textColor}`;
           }
           if (barEl) {
-            // Clear old color classes and apply active variant color
             barEl.className = `${variant.colorClass} h-full transition-all duration-75`;
           }
 
