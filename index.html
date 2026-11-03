@@ -73,31 +73,32 @@
       stage: 'Garage DIY Press',
       lastSaved: Date.now(),
       stations: [
-        { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 10, baseRevenue: 1, unlockCost: 0, unlocked: true },
-        { id: 'plating', name: '2. Matrix Plating', level: 0, baseCost: 50, baseRevenue: 4, unlockCost: 50, unlocked: false },
-        { id: 'granulator', name: '3. Vinyl Granulator', level: 0, baseCost: 250, baseRevenue: 18, unlockCost: 250, unlocked: false },
-        { id: 'press', name: '4. Hydraulic Press', level: 0, baseCost: 1200, baseRevenue: 85, unlockCost: 1200, unlocked: false },
-        { id: 'trimmer', name: '5. Edge Trimmer', level: 0, baseCost: 6000, baseRevenue: 400, unlockCost: 6000, unlocked: false },
-        { id: 'sleeve', name: '6. Foil Sleeve Press', level: 0, baseCost: 35000, baseRevenue: 2200, unlockCost: 35000, unlocked: false }
+        { id: 'lathe', name: '1. Mastering Lathe', level: 1, baseCost: 10, baseRevenue: 2, cycleTime: 1200, unlockCost: 0, unlocked: true, progress: 0 },
+        { id: 'plating', name: '2. Matrix Plating', level: 0, baseCost: 50, baseRevenue: 10, cycleTime: 2000, unlockCost: 50, unlocked: false, progress: 0 },
+        { id: 'granulator', name: '3. Vinyl Granulator', level: 0, baseCost: 250, baseRevenue: 45, cycleTime: 3500, unlockCost: 250, unlocked: false, progress: 0 },
+        { id: 'press', name: '4. Hydraulic Press', level: 0, baseCost: 1200, baseRevenue: 200, cycleTime: 5000, unlockCost: 1200, unlocked: false, progress: 0 },
+        { id: 'trimmer', name: '5. Edge Trimmer', level: 0, baseCost: 6000, baseRevenue: 950, cycleTime: 7000, unlockCost: 6000, unlocked: false, progress: 0 },
+        { id: 'sleeve', name: '6. Foil Sleeve Press', level: 0, baseCost: 35000, baseRevenue: 4500, cycleTime: 10000, unlockCost: 35000, unlocked: false, progress: 0 }
       ]
     };
 
     let gameState = JSON.parse(JSON.stringify(defaultState));
-    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V1';
+    const SAVE_KEY = 'VINYL_EMPIRE_SAVE_V2';
 
     function getUpgradeCost(station) {
       return Math.floor(station.baseCost * Math.pow(1.15, station.level));
     }
 
     function getStationRevenue(station) {
-      return station.baseRevenue * station.level;
+      return Math.floor(station.baseRevenue * station.level);
     }
 
-    function getPerSecondIncome() {
-      return gameState.stations.reduce((sum, s) => s.unlocked ? sum + getStationRevenue(s) : sum, 0);
+    // Higher level = faster progress speed multiplier
+    function getStationSpeedMultiplier(station) {
+      return Math.pow(1.08, station.level - 1);
     }
 
-    // Build DOM elements ONCE (or when unlock state changes)
+    // Build DOM elements ONCE
     function initUI() {
       const container = document.getElementById('stations-container');
       container.innerHTML = '';
@@ -121,7 +122,7 @@
             </div>
           `;
         } else {
-          card.className = "p-4 rounded-lg border bg-vinyl-800 border-gray-800 transition";
+          card.className = "p-4 rounded-lg border bg-vinyl-800 border-gray-800 transition space-y-3";
           card.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
               <div class="space-y-1">
@@ -129,12 +130,16 @@
                   <h3 class="font-bold text-gray-100">${station.name}</h3>
                   <span id="level-${station.id}" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs rounded font-mono">Lvl ${station.level}</span>
                 </div>
-                <p class="text-xs text-gray-400">Yield: <span id="revenue-${station.id}" class="text-green-400 font-mono">+$${getStationRevenue(station).toLocaleString()}/sec</span></p>
+                <p class="text-xs text-gray-400">Yield: <span id="revenue-${station.id}" class="text-green-400 font-mono">+$${getStationRevenue(station).toLocaleString()}</span></p>
               </div>
               <button id="action-btn-${station.id}" onclick="handleStationAction('${station.id}')" 
                 class="px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer">
                 Upgrade
               </button>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-vinyl-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+              <div id="bar-${station.id}" class="bg-amber-500 h-full transition-all duration-75" style="width: 0%"></div>
             </div>
           `;
         }
@@ -143,7 +148,7 @@
       updateUI();
     }
 
-    // Update text and button states in place without touching innerHTML
+    // Update text, progress bars, and button states in place
     function updateUI() {
       document.getElementById('cash-display').innerText = '$' + Math.floor(gameState.cash).toLocaleString();
       document.getElementById('stage-title').innerText = gameState.stage;
@@ -154,27 +159,27 @@
 
         if (!station.unlocked) {
           const canUnlock = gameState.cash >= station.unlockCost;
-          if (canUnlock) {
-            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer";
-          } else {
-            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
-          }
+          btn.className = canUnlock 
+            ? "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer" 
+            : "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
         } else {
-          // Update level & revenue text elements in place
+          // Update level & revenue text elements
           const lvlEl = document.getElementById(`level-${station.id}`);
           const revEl = document.getElementById(`revenue-${station.id}`);
           if (lvlEl) lvlEl.innerText = `Lvl ${station.level}`;
-          if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}/sec`;
+          if (revEl) revEl.innerText = `+$${getStationRevenue(station).toLocaleString()}`;
+
+          // Update Progress Bar width
+          const barEl = document.getElementById(`bar-${station.id}`);
+          if (barEl) barEl.style.width = `${station.progress}%`;
 
           const cost = getUpgradeCost(station);
           const canAfford = gameState.cash >= cost;
           btn.innerText = `Upgrade ($${cost.toLocaleString()})`;
           
-          if (canAfford) {
-            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer";
-          } else {
-            btn.className = "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
-          }
+          btn.className = canAfford 
+            ? "px-4 py-2 text-xs font-bold rounded transition bg-amber-500 hover:bg-amber-400 text-black cursor-pointer" 
+            : "px-4 py-2 text-xs font-bold rounded transition bg-gray-800 text-gray-500 cursor-not-allowed";
         }
       });
     }
@@ -188,7 +193,8 @@
           gameState.cash -= station.unlockCost;
           station.unlocked = true;
           station.level = 1;
-          initUI(); // Re-build DOM element once for this station
+          station.progress = 0;
+          initUI();
           saveGame();
         }
       } else {
@@ -214,10 +220,16 @@
           const loadedState = JSON.parse(saved);
           gameState = { ...defaultState, ...loadedState };
 
+          // Approximate offline earnings based on average production rate
           const elapsedSeconds = Math.max(0, (Date.now() - (gameState.lastSaved || Date.now())) / 1000);
-          const offlineEarnings = getPerSecondIncome() * elapsedSeconds;
-          if (offlineEarnings > 0) {
-            gameState.cash += offlineEarnings;
+          if (elapsedSeconds > 0) {
+            let totalPerSec = 0;
+            gameState.stations.forEach(s => {
+              if (s.unlocked && s.cycleTime > 0) {
+                totalPerSec += (getStationRevenue(s) / (s.cycleTime / 1000)) * getStationSpeedMultiplier(s);
+              }
+            });
+            gameState.cash += totalPerSec * elapsedSeconds;
           }
         } catch (e) {
           console.error("Failed to load save:", e);
@@ -267,16 +279,33 @@
       }
     }
 
-    // Main Game Loop (Runs 10 times per second)
+    // Main Game Loop (Runs 20 times per second for ultra-smooth progress bars)
     let lastTick = Date.now();
     setInterval(() => {
       const now = Date.now();
-      const deltaSeconds = (now - lastTick) / 1000;
+      const deltaMs = now - lastTick;
       lastTick = now;
+      const deltaSeconds = deltaMs / 1000;
 
-      gameState.cash += getPerSecondIncome() * deltaSeconds;
+      // Update progress for each unlocked station
+      gameState.stations.forEach(station => {
+        if (!station.unlocked) return;
+
+        // Calculate progress increment based on cycle time and level speed multiplier
+        const speedMult = getStationSpeedMultiplier(station);
+        const progressIncrement = (deltaMs / station.cycleTime) * 100 * speedMult;
+        
+        station.progress += progressIncrement;
+
+        // When cycle completes
+        if (station.progress >= 100) {
+          station.progress = 0; // Reset progress bar loop
+          gameState.cash += getStationRevenue(station);
+        }
+      });
+
       updateUI();
-    }, 100);
+    }, 50);
 
     setInterval(saveGame, 5000);
 
